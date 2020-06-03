@@ -12,7 +12,7 @@ admin.initializeApp({
   credential: admin.credential.cert(require("../keys/admin.json")),
   databaseURL: "https://book-my-doctor-eadd7.firebaseio.com",
 });
-
+const moment = require('moment');
 const db = admin.firestore();
 
 
@@ -175,8 +175,9 @@ function listEvents(auth: any) {
 
 //**-----------------------------response booked time slots ['date','starttime','endtime'] function [4] ---start
 export const GetDoctorAppointments = functions.https.onRequest(
-  (request, response) => {
+  (req, res) => {
     listBookingEvents(oAuth2Client)
+    
   });
 
 async function listBookingEvents(auth: any) {
@@ -210,12 +211,12 @@ async function listBookingEvents(auth: any) {
             if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
               const jsonStr = JSON.stringify(evv[i]);
                 console.log(jsonStr);
+                
             }
           }
         });
       } else {
         console.log("No upcoming events found.");
-
       }
     });
 }
@@ -225,7 +226,7 @@ async function listBookingEvents(auth: any) {
 
 //**------------------------response/request patient data function [5]
 export const BookDoctor = functions.https.onRequest(
-  (request, response) => {
+  async (request, response) => {
     const eventData = {
       eventName: request.body.eventName,
       startTime: request.body.startTime,//"2020-04-20T08:00:00"
@@ -251,7 +252,16 @@ export const BookDoctor = functions.https.onRequest(
         response.status(500).send(ERROR_RESPONSE);
         return;
       });
-  }
+      //response.json(eventData);
+      var hip: any = {}
+     // var p = [];
+      // hip.p = request.params.true;;
+       hip.d = moment(eventData.startTime).format('YYYY-MM-DD');
+       hip.s = moment(eventData.startTime).format('hh-mm');
+       hip.e = moment(eventData.endTime).format('hh-mm');
+        
+      response.json(hip);
+    } 
 );
 
 
@@ -304,3 +314,10 @@ function addEventBooking(event: any, auth: any) {
 
 
 
+export const Book = functions.https.onRequest(
+  async (request, response) => {
+
+    const ideaId=request.params.iId;
+console.log(ideaId);
+response.json(ideaId)
+  });
