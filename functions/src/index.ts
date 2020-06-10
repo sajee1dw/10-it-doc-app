@@ -79,7 +79,7 @@ export const GetInfo = functions.https.onRequest(
           tempDocc.address = doc.data().address;// ||"N/A"
           tempDocc.appointmentcalendar = doc.data().appointmentcalendar;// ||"N/A"
           tempDocc.bookingcalendar = doc.data().bookingcalendar;// ||"N/A"
-          //  Info.push(tempDoc);
+           // Info.push(tempDoc);
           res.json(tempDocc);
           console.log(tempDocc);
 
@@ -312,12 +312,15 @@ function addEventBooking(event: any, auth: any) {
 }
 
 
-
-
+const express = require('express')
+const index = express()
+const bodyparser = require('body-parser');
+index.use(bodyparser.json());
 export const Book = functions.https.onRequest(
   async (request, response) => {
-
+    
     const ideaId=request.params.iId;
-console.log(ideaId);
-response.json(ideaId)
+    console.log(ideaId);
+    response.json(ideaId)
   });
+
