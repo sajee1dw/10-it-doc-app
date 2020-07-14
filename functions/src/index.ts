@@ -79,7 +79,7 @@ export const GetInfo = functions.https.onRequest(
           tempDocc.address = doc.data().address;// ||"N/A"
           tempDocc.appointmentcalendar = doc.data().appointmentcalendar;// ||"N/A"
           tempDocc.bookingcalendar = doc.data().bookingcalendar;// ||"N/A"
-           // Info.push(tempDoc);
+          // Info.push(tempDoc);
           res.json(tempDocc);
           console.log(tempDocc);
 
@@ -118,56 +118,56 @@ const TIME_ZONE = "Time zone in Katubedda, Moratuwa (GMT+5:30)";//EST  +5:30
 
 
 //**------------------------- response doctors booking time slots['date','starttime','endtime']  function [3] ----start
-export const GetDoctorBookingCalendar = functions.https.onRequest(
-  (request, response) => {
-    listEvents(oAuth2Client);
-    {
-      response.status(200).send("Ok");
+// export const GetDoctorBookingCalendar = functions.https.onRequest(
+//   (request, response) => {
+//     listEvents(oAuth2Client);
+//     {
+//       response.status(200).send("Ok");
 
-    }
-  });
+//     }
+//   });
 
-function listEvents(auth: any) {
-  const calendar2 = google.calendar({ version: "v3", auth });
-  const moment = require('moment');
-  calendar2.events.list(
-    {
-      calendarId: 'primary', //"primary"
-      timeMin: (moment().subtract(1, 'days')).toISOString(),
-      maxResults: 100,
-      singleEvents: true,
-      orderBy: 'startTime',
-    },
-    (err: any, res: any) => {
-      if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items;
-      if (events) {
-        console.log("Upcoming 100 events:");
-        events.forEach((event: any) => {
-          var tempEvent: any = {}
-          var evv = [];
-          tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
-          tempEvent.sTime = moment(event.start.dateTime).format('hh-mm');
-          tempEvent.eTime = moment(event.end.dateTime).format('hh-mm');
-          evv.push(tempEvent);
+// function listEvents(auth: any) {
+//   const calendar2 = google.calendar({ version: "v3", auth });
+//   const moment = require('moment');
+//   calendar2.events.list(
+//     {
+//       calendarId: 'primary', //"primary"
+//       timeMin: (moment().subtract(1, 'days')).toISOString(),
+//       maxResults: 100,
+//       singleEvents: true,
+//       orderBy: 'startTime',
+//     },
+//     (err: any, res: any) => {
+//       if (err) return console.log("The API returned an error: " + err);
+//       const events = res.data.items;
+//       if (events) {
+//         console.log("Upcoming 100 events:");
+//         events.forEach((event: any) => {
+//           var tempEvent: any = {}
+//           var evv = [];
+//           tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+//           tempEvent.sTime = moment(event.start.dateTime).format('hh-mm');
+//           tempEvent.eTime = moment(event.end.dateTime).format('hh-mm');
+//           evv.push(tempEvent);
 
-          for (let i = 0; i < evv.length; i++) {
-            var x = moment().format('YYYY-MM-DD');
-            var y = moment().format('hh-mm');
-            var z = moment().format('hh-mm');
-            if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
-              console.log(evv[i]);
+//           for (let i = 0; i < evv.length; i++) {
+//             var x = moment().format('YYYY-MM-DD');
+//             var y = moment().format('hh-mm');
+//             var z = moment().format('hh-mm');
+//             if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
+//               console.log(evv[i]);
 
-            }
-          }
+//             }
+//           }
 
-        });
-      } else {
-        console.log("No upcoming events found.");
-      }
+//         });
+//       } else {
+//         console.log("No upcoming events found.");
+//       }
 
-    });
-}
+//     });
+// }
 
 ////< ---------------------------------------------------- end------------------------------------------------------------------------>
 
@@ -176,11 +176,15 @@ function listEvents(auth: any) {
 //**-----------------------------response booked time slots ['date','starttime','endtime'] function [4] ---start
 export const GetDoctorAppointments = functions.https.onRequest(
   (req, res) => {
-    listBookingEvents(oAuth2Client)
+   let temp = listBookingEvents(oAuth2Client);
+    {
+      res.status(200).send(temp);
+    }
     
+
   });
 
-async function listBookingEvents(auth: any) {
+ function listBookingEvents(auth: any) {
   const calendar2 = google.calendar({ version: "v3", auth });
   const moment = require('moment');
   calendar2.events.list(
@@ -198,20 +202,23 @@ async function listBookingEvents(auth: any) {
         console.log("Upcoming 100 events:");
         events.forEach((event: any, res: any) => {
           var tempEvent: any = {}
-          var evv = [];
-          tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
-          tempEvent.sTime = moment(event.start.dateTime).format('hh-mm');
-          tempEvent.eTime = moment(event.end.dateTime).format('hh-mm');
-          evv.push(tempEvent);
+          var evvv = [];
+          if (event.status == 'confirmed') {
+            tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+            tempEvent.startTime = moment(event.start.dateTime).format('HH-mm a');
+            tempEvent.endTime = moment(event.end.dateTime).format('HH-mm a');
+            tempEvent.slot = 1;
+          };
 
-          for (let i = 0; i < evv.length; i++) {
+          // tempEvent.booked 
+          evvv.push(tempEvent);
+
+          for (let i = 0; i < evvv.length; i++) {
             var x = moment().format('YYYY-MM-DD');
-            var y = moment().format('hh-mm');
-            var z = moment().format('hh-mm');
-            if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
-              const jsonStr = JSON.stringify(evv[i]);
-                console.log(jsonStr);
-                
+            var y = moment().format('HH-mm');
+            var z = moment().format('HH-mm');
+            if (evvv[i].Date == x && evvv[i].sTime != y && evvv[i].eTime != z) {
+              return evvv[i];
             }
           }
         });
@@ -224,7 +231,7 @@ async function listBookingEvents(auth: any) {
 ////<----------------------------------------------------------------end------------------------------------------------------------------->
 
 
-//**------------------------response/request patient data function [5]
+//**------------------------response/request patient data function [5] ---- start
 export const BookDoctor = functions.https.onRequest(
   async (request, response) => {
     const eventData = {
@@ -236,9 +243,9 @@ export const BookDoctor = functions.https.onRequest(
       idno: request.body.idno,
       age: request.body.age,
       address: request.body.address,
-      phone: request.body.phone,
+      //phone: request.body.phone, 
       mobile: request.body.mobile,
-      symptom: request.body.symptom,
+      // symptom: request.body.symptom,
     };
 
     addEventBooking(eventData, oAuth2Client)
@@ -252,16 +259,16 @@ export const BookDoctor = functions.https.onRequest(
         response.status(500).send(ERROR_RESPONSE);
         return;
       });
-      //response.json(eventData);
-      var hip: any = {}
-     // var p = [];
-      // hip.p = request.params.true;;
-       hip.d = moment(eventData.startTime).format('YYYY-MM-DD');
-       hip.s = moment(eventData.startTime).format('hh-mm');
-       hip.e = moment(eventData.endTime).format('hh-mm');
-        
-      response.json(hip);
-    } 
+    //response.json(eventData);
+    var hip: any = {}
+    // var p = [];
+    // hip.p = request.params.true;;
+    hip.d = moment(eventData.startTime).format('YYYY-MM-DD');
+    hip.s = moment(eventData.startTime).format('hh-mm');
+    hip.e = moment(eventData.endTime).format('hh-mm');
+
+    response.json(hip);
+  }
 );
 
 
@@ -292,9 +299,9 @@ function addEventBooking(event: any, auth: any) {
               idno: event.idno,
               age: event.age,
               address: event.address,
-              phone: event.phone,
+              // phone: event.phone,
               mobile: event.mobile,
-              symptom: event.symptom,
+              //symptom: event.symptom,
             }
           },
         },
@@ -318,9 +325,119 @@ const bodyparser = require('body-parser');
 index.use(bodyparser.json());
 export const Book = functions.https.onRequest(
   async (request, response) => {
-    
-    const ideaId=request.params.iId;
+
+    const ideaId = request.params.iId;
     console.log(ideaId);
     response.json(ideaId)
   });
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// test
+export const GetCalendar = functions.https.onRequest(
+  (request, response) => {
+    listEvents(oAuth2Client);
+    {
+      response.status(200).send("Ok");
+
+    }
+  });
+
+function listEvents(auth: any) {
+  const calendar2 = google.calendar({ version: "v3", auth });
+  const moment = require('moment'); ``
+  calendar2.events.list(
+    {
+      calendarId: 'primary', //"primary"
+      timeMin: (moment().subtract(1, 'days')).toISOString(),
+      maxResults: 100,
+      singleEvents: true,
+      orderBy: 'startTime',
+    },
+    (err: any, res: any) => {
+      if (err) return console.log("The API returned an error: " + err);
+      const events = res.data.items;
+      if (events) {
+        console.log("Upcoming 100 events:");
+        const Moment = require('moment');
+        const MomentRange = require('moment-range');
+        const moment = MomentRange.extendMoment(Moment);
+        events.forEach((event: any) => {
+          var tempEvent: any = {}
+          var evv = [];
+          tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+          tempEvent.sTime = moment(event.start.dateTime).format('YYYY-MM-DDTHH:mm:ss');
+          tempEvent.eTime = moment(event.end.dateTime).format('YYYY-MM-DDTHH:mm:ss');
+          evv.push(tempEvent);
+          for (let i = 0; i < evv.length; i++) {
+            console.log(evv[i].sTime);
+            const start = moment(evv[i].sTime);
+            const end = moment(evv[i].eTime);
+            const range = moment.range(start, end);
+            const rangeBy = range.by('minutes', { step: 15 });
+
+            const res = Array.from(rangeBy).map((m: any) => ({
+              'startTime': moment(m.toString()).format('hh:mm:ss'),
+              'endTime': moment(m.add(15, 'm').toString()).format('hh:mm:ss'),
+              'slot': 0
+            }))
+
+            if (moment(res[res.length - 1].endTime).isAfter(end)) {
+              res[res.length - 1].endTime = moment(end.toString()).format('hh:mm:ss');
+            }
+
+            console.log(res)
+
+          }
+
+        });
+      } else {
+        console.log("No upcoming events found.");
+      }
+
+    });
+}
+
+
+
+
+// const start  = moment('2019-11-02T11:57:00.701Z');
+// const end    = moment('2019-11-02T13:31:00.701Z');
+// const range  = moment.range(start, end);
+
+// const rangeBy = range.by('minutes', { step: 30 });
+
+// const res = Array.from(rangeBy).map(m => ({
+//   'startTime': m.toISOString(),
+//   'endTime': m.add(29, 'm').add(59, 's').toISOString()
+// }))
+
+// if(moment(res[res.length -1].endTime).isAfter(end)) {
+//   res[res.length -1].endTime = end.toISOString();
+// }
+
+// console.log(res) 
+    //  "moment": "^2.26.0",
+    //  "moment-range": "^1.2.0",
