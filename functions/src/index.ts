@@ -61,7 +61,12 @@ export const GetDoctorsAreaList = functions.https.onRequest(
 
 //**----------------------to get doctors infors[name,phone,address,appint,booking caiendars] function: [2] ---start
 export const GetInfo = functions.https.onRequest(
-  async (req: any, res: any) => {
+  async (request: any, res: any) => {
+    // const infoData = {
+    //   eventName: request.body.eventName,
+    //   startTime: request.body.startTime,
+    //   endTime: request.body.endTime
+    // };
     let doctorsRef = db.collection('doctors');
     let query = doctorsRef.where('name', '==', 'p.k silva').get()
       .then(snapshot => {
@@ -118,56 +123,74 @@ const TIME_ZONE = "Time zone in Katubedda, Moratuwa (GMT+5:30)";//EST  +5:30
 
 
 //**------------------------- response doctors booking time slots['date','starttime','endtime']  function [3] ----start
-// export const GetDoctorBookingCalendar = functions.https.onRequest(
-//   (request, response) => {
-//     listEvents(oAuth2Client);
-//     {
-//       response.status(200).send("Ok");
+export const GetDoctorBookingCalendar = functions.https.onRequest(
+  async (request, response) => {
+    var temp: any = await listEvents(oAuth2Client);
+    temp.filter((item: any) => item.hasOwnProperty('slot'))
+      .map((item: any, i: any) => {
+        if (item.startTime != '11:00:00') {
+          console.log(item)
+          // response.status(200).send(item);
+        }
+      }
+      );
 
-//     }
-//   });
+  });
 
-// function listEvents(auth: any) {
-//   const calendar2 = google.calendar({ version: "v3", auth });
-//   const moment = require('moment');
-//   calendar2.events.list(
-//     {
-//       calendarId: 'primary', //"primary"
-//       timeMin: (moment().subtract(1, 'days')).toISOString(),
-//       maxResults: 100,
-//       singleEvents: true,
-//       orderBy: 'startTime',
-//     },
-//     (err: any, res: any) => {
-//       if (err) return console.log("The API returned an error: " + err);
-//       const events = res.data.items;
-//       if (events) {
-//         console.log("Upcoming 100 events:");
-//         events.forEach((event: any) => {
-//           var tempEvent: any = {}
-//           var evv = [];
-//           tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
-//           tempEvent.sTime = moment(event.start.dateTime).format('hh-mm');
-//           tempEvent.eTime = moment(event.end.dateTime).format('hh-mm');
-//           evv.push(tempEvent);
+function listEvents(auth: any) {
+  return new Promise((resolve, reject) => {
+    const calendar2 = google.calendar({ version: "v3", auth });
+    const moment = require('moment');
+    calendar2.events.list(
+      {
+        calendarId: 'primary', //"primary"
+        timeMin: (moment().subtract(1, 'days')).toISOString(),
+        maxResults: 100,
+        singleEvents: true,
+        orderBy: 'startTime',
+      },
+      (err: any, res: any) => {
+        if (err) return console.log("The API returned an error: " + err);
+        const events = res.data.items;
+        if (events) {
+          console.log("Upcoming 100 events:");
+          const Moment = require('moment');
+          const MomentRange = require('moment-range');
+          const moment = MomentRange.extendMoment(Moment);
+          events.forEach((event: any) => {
+            var tempEvent: any = {}
+            var evv = [];
+            tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+            tempEvent.sTime = moment(event.start.dateTime).format('YYYY-MM-DDTHH:mm:ss');
+            tempEvent.eTime = moment(event.end.dateTime).format('YYYY-MM-DDTHH:mm:ss');
+            evv.push(tempEvent);
+            for (let i = 0; i < evv.length; i++) {
+              // console.log(evv[i].sTime);
+              const start = moment(evv[i].sTime);
+              const end = moment(evv[i].eTime);
+              const range = moment.range(start, end);
+              const rangeBy = range.by('minutes', { step: 15 });
 
-//           for (let i = 0; i < evv.length; i++) {
-//             var x = moment().format('YYYY-MM-DD');
-//             var y = moment().format('hh-mm');
-//             var z = moment().format('hh-mm');
-//             if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
-//               console.log(evv[i]);
+              const res = Array.from(rangeBy).map((m: any) => ({
+                'startTime': moment(m.toString()).format('hh:mm:ss'),
+                'endTime': moment(m.add(15, 'm').toString()).format('hh:mm:ss'),
+                'slot': 0
+              }))
 
-//             }
-//           }
+              if (moment(res[res.length - 1].endTime).isAfter(end)) {
+                res[res.length - 1].endTime = moment(end.toString()).format('hh:mm:ss');
+              }
+              // console.log(res);
+              resolve(res)
+            }
 
-//         });
-//       } else {
-//         console.log("No upcoming events found.");
-//       }
-
-//     });
-// }
+          });
+        } else {
+          console.log("No upcoming events found.");
+        }
+      });
+  });
+}
 
 ////< ---------------------------------------------------- end------------------------------------------------------------------------>
 
@@ -175,57 +198,48 @@ const TIME_ZONE = "Time zone in Katubedda, Moratuwa (GMT+5:30)";//EST  +5:30
 
 //**-----------------------------response booked time slots ['date','starttime','endtime'] function [4] ---start
 export const GetDoctorAppointments = functions.https.onRequest(
-  (req, res) => {
-   let temp = listBookingEvents(oAuth2Client);
-    {
-      res.status(200).send(temp);
-    }
-    
-
+  async (req, res) => {
+    let temp = await listBookingEvents(oAuth2Client);
+    res.json(temp);
+    //console.log(temp);
   });
 
- function listBookingEvents(auth: any) {
-  const calendar2 = google.calendar({ version: "v3", auth });
-  const moment = require('moment');
-  calendar2.events.list(
-    {
-      calendarId: 'mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com', //"primary"
-      timeMin: (moment().subtract(1, 'days')).toISOString(),//timeMin gives tommorow events [new Date()]
-      maxResults: 100,
-      singleEvents: true,
-      orderBy: 'startTime',
-    },
-    (err: any, res: any) => {
-      if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items;
-      if (events) {
-        console.log("Upcoming 100 events:");
-        events.forEach((event: any, res: any) => {
-          var tempEvent: any = {}
-          var evvv = [];
-          if (event.status == 'confirmed') {
-            tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
-            tempEvent.startTime = moment(event.start.dateTime).format('HH-mm a');
-            tempEvent.endTime = moment(event.end.dateTime).format('HH-mm a');
-            tempEvent.slot = 1;
-          };
+function listBookingEvents(auth: any) {
+  return new Promise((resolve: any, reject) => {
+    const calendar2 = google.calendar({ version: "v3", auth });
+    const moment = require('moment');
+    calendar2.events.list(
+      {
+        calendarId: 'mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com', //"primary"
+        timeMin: (moment().subtract(1, 'days')).toISOString(),//timeMin gives tommorow events [new Date()]
+        maxResults: 100,
+        singleEvents: true,
+        orderBy: 'startTime',
+      },
+      (err: any, res: any) => {
+        if (err) return console.log("The API returned an error: " + err);
+        const events = res.data.items;
+        if (events) {
+          console.log("Upcoming 100 events:");
+          events.forEach((event: any, res: any) => {
+            var tempEvent: any = {}
+            //var evvv = [];
+            if (event.status == 'confirmed') {
+              //tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+              tempEvent.startTime = moment(event.start.dateTime).format('HH-mm a');
+              tempEvent.endTime = moment(event.end.dateTime).format('HH-mm a');
+              tempEvent.slot = 1;
+              //evvv.push(tempEvent)
+            };
+            console.log(tempEvent)
+            resolve(tempEvent);
 
-          // tempEvent.booked 
-          evvv.push(tempEvent);
-
-          for (let i = 0; i < evvv.length; i++) {
-            var x = moment().format('YYYY-MM-DD');
-            var y = moment().format('HH-mm');
-            var z = moment().format('HH-mm');
-            if (evvv[i].Date == x && evvv[i].sTime != y && evvv[i].eTime != z) {
-              return evvv[i];
-            }
-          }
-        });
-      } else {
-        console.log("No upcoming events found.");
-      }
-    });
+          });
+        } else {
+          resolve("No upcoming events found.");
+        }
+      });
+  });
 }
 
 ////<----------------------------------------------------------------end------------------------------------------------------------------->
@@ -337,92 +351,6 @@ export const Book = functions.https.onRequest(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// test
-export const GetCalendar = functions.https.onRequest(
-  (request, response) => {
-    listEvents(oAuth2Client);
-    {
-      response.status(200).send("Ok");
-
-    }
-  });
-
-function listEvents(auth: any) {
-  const calendar2 = google.calendar({ version: "v3", auth });
-  const moment = require('moment'); ``
-  calendar2.events.list(
-    {
-      calendarId: 'primary', //"primary"
-      timeMin: (moment().subtract(1, 'days')).toISOString(),
-      maxResults: 100,
-      singleEvents: true,
-      orderBy: 'startTime',
-    },
-    (err: any, res: any) => {
-      if (err) return console.log("The API returned an error: " + err);
-      const events = res.data.items;
-      if (events) {
-        console.log("Upcoming 100 events:");
-        const Moment = require('moment');
-        const MomentRange = require('moment-range');
-        const moment = MomentRange.extendMoment(Moment);
-        events.forEach((event: any) => {
-          var tempEvent: any = {}
-          var evv = [];
-          tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
-          tempEvent.sTime = moment(event.start.dateTime).format('YYYY-MM-DDTHH:mm:ss');
-          tempEvent.eTime = moment(event.end.dateTime).format('YYYY-MM-DDTHH:mm:ss');
-          evv.push(tempEvent);
-          for (let i = 0; i < evv.length; i++) {
-            console.log(evv[i].sTime);
-            const start = moment(evv[i].sTime);
-            const end = moment(evv[i].eTime);
-            const range = moment.range(start, end);
-            const rangeBy = range.by('minutes', { step: 15 });
-
-            const res = Array.from(rangeBy).map((m: any) => ({
-              'startTime': moment(m.toString()).format('hh:mm:ss'),
-              'endTime': moment(m.add(15, 'm').toString()).format('hh:mm:ss'),
-              'slot': 0
-            }))
-
-            if (moment(res[res.length - 1].endTime).isAfter(end)) {
-              res[res.length - 1].endTime = moment(end.toString()).format('hh:mm:ss');
-            }
-
-            console.log(res)
-
-          }
-
-        });
-      } else {
-        console.log("No upcoming events found.");
-      }
-
-    });
-}
-
-
-
-
 // const start  = moment('2019-11-02T11:57:00.701Z');
 // const end    = moment('2019-11-02T13:31:00.701Z');
 // const range  = moment.range(start, end);
@@ -439,5 +367,147 @@ function listEvents(auth: any) {
 // }
 
 // console.log(res) 
-    //  "moment": "^2.26.0",
-    //  "moment-range": "^1.2.0",
+//  "moment": "^2.26.0",
+//  "moment-range": "^1.2.0",
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// export const GetDoctorAppointments = functions.https.onRequest(
+//   async (req, res) => {
+//     let temp = await listBookingEvents(oAuth2Client);
+//     res.json(temp);
+//     console.log(temp);
+//   });
+
+// function listBookingEvents(auth: any) {
+//   return new Promise((resolve, reject) => {
+//     const calendar2 = google.calendar({ version: "v3", auth });
+//     const moment = require('moment');
+//     calendar2.events.list(
+//       {
+//         calendarId: 'mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com', //"primary"
+//         timeMin: (moment().subtract(1, 'days')).toISOString(),//timeMin gives tommorow events [new Date()]
+//         maxResults: 100,
+//         singleEvents: true,
+//         orderBy: 'startTime',
+//       },
+//       (err: any, res: any) => {
+//         if (err) return console.log("The API returned an error: " + err);
+//         const events = res.data.items;
+//         if (events) {
+//           console.log("Upcoming 100 events:");
+//           events.forEach((event: any, res: any) => {
+//             var tempEvent: any = {}
+//             var evvv = [];
+//             if (event.status == 'confirmed') {
+//               tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+//               tempEvent.startTime = moment(event.start.dateTime).format('HH-mm a');
+//               tempEvent.endTime = moment(event.end.dateTime).format('HH-mm a');
+//               tempEvent.slot = 1;
+//               evvv.push(tempEvent)
+//             };
+//             console.log(evvv);
+//             resolve(evvv);
+
+//           });
+//         } else {
+//           resolve("No upcoming events found.");
+//         }
+//       });
+//   });
+// }
+
+
+
+// export const saba = functions.https.onRequest(
+//  async (req, res) => {
+//   const msg = await prathiba();
+//   console.log('Message:', msg);
+//   res.json(msg)
+
+//   });
+//   function prathiba() {
+
+//     return new Promise(resolve => {
+//       setTimeout(() => {
+//         resolve('🤡');
+//       }, 2000);
+//     });
+
+//   }
+
+//**------------------------- response doctors booking time slots['date','starttime','endtime']  function [3] ----start
+// export const GetDoctorBookingCalendar = functions.https.onRequest(
+//   (request, response) => {
+//     listEvents(oAuth2Client);
+//     {
+//       response.status(200).send("Ok");
+
+//     }
+//   });
+
+// function listEvents(auth: any) {
+//   const calendar2 = google.calendar({ version: "v3", auth });
+//   const moment = require('moment');
+//   calendar2.events.list(
+//     {
+//       calendarId: 'primary', //"primary"
+//       timeMin: (moment().subtract(1, 'days')).toISOString(),
+//       maxResults: 100,
+//       singleEvents: true,
+//       orderBy: 'startTime',
+//     },
+//     (err: any, res: any) => {
+//       if (err) return console.log("The API returned an error: " + err);
+//       const events = res.data.items;
+//       if (events) {
+//         console.log("Upcoming 100 events:");
+//         events.forEach((event: any) => {
+//           var tempEvent: any = {}
+//           var evv = [];
+//           tempEvent.Date = moment(event.start.dateTime).format('YYYY-MM-DD');
+//           tempEvent.sTime = moment(event.start.dateTime).format('hh-mm');
+//           tempEvent.eTime = moment(event.end.dateTime).format('hh-mm');
+//           evv.push(tempEvent);
+
+//           for (let i = 0; i < evv.length; i++) {
+//             var x = moment().format('YYYY-MM-DD');
+//             var y = moment().format('hh-mm');
+//             var z = moment().format('hh-mm');
+//             if (evv[i].Date == x && evv[i].sTime != y && evv[i].eTime != z) {
+//               console.log(evv[i]);
+
+//             }
+//           }
+
+//         });
+//       } else {
+//         console.log("No upcoming events found.");
+//       }
+
+//     });
+// }
+
+
+// let temp = await listBookingEvents(oAuth2Client);
+    // let data = [temp, temp1];
+    // response.status(200).send(data);
+    // const arrayColumn = (arr: any[], n: number) => arr.map(x => x[n]);
+
+    // const twoDimensionalArray = [temp1];
+
+    // console.log(arrayColumn(twoDimensionalArray, 0));
