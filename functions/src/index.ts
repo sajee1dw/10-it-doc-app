@@ -1,7 +1,5 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-// import { firebaseConfig, config } from "firebase-functions";
-// import {firebaseConfig, config} from "firebase-functions";
 const { google } = require("googleapis");
 const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar("v3");
@@ -12,7 +10,9 @@ admin.initializeApp({
   credential: admin.credential.cert(require("../keys/admin.json")),
   databaseURL: "https://book-my-doctor-eadd7.firebaseio.com",
 });
-const moment = require("moment");
+const Moment = require("moment");
+const MomentRange = require("moment-range");
+const moment = MomentRange.extendMoment(Moment);
 const db = admin.firestore();
 
 //**----------------------------- response area,suberb,doctors function: [1] ----start
@@ -20,26 +20,24 @@ const db = admin.firestore();
 export const GetDoctorsAreaList = functions.https.onRequest(
   async (request, response) => {
     admin.firestore().collection;
-    let docInfo: any = {};
+    const docInfo: any = {};
     try {
       let areas = await db.collection("areas").get();
       if (areas) {
         docInfo["areas"] = areas.docs.map((doc) => doc.data());
       }
-
       let suburbs = await db.collection("suburbs").get();
       if (suburbs) {
         docInfo["suburbs"] = suburbs.docs.map((doc) => doc.data());
       }
-
       let doctors = await db.collection("doctors").get();
       if (doctors) {
         docInfo["doctors"] = [];
         doctors.docs.forEach((doc: any) => {
           var tempDoc: any = {};
           tempDoc.name = doc.data().name; // || "N/A"
-          tempDoc.area = doc.data().area; // ||"N/A"
-          tempDoc.suburb = doc.data().suburb; // ||"N/A"
+          tempDoc.area = doc.data().area;
+          tempDoc.suburb = doc.data().suburb;
           docInfo["doctors"].push(tempDoc);
         });
       }
@@ -55,6 +53,7 @@ export const GetDoctorsAreaList = functions.https.onRequest(
 //// <------------------------------------------------------------end----------------------------------------------------------------------->
 
 //**----------------------to get doctors infors[name,phone,address,appint,booking caiendars] function: [2] ---start
+var tempDoctor: any = {};
 export const GetInfo = functions.https.onRequest(
   async (request: any, res: any) => {
     let doctorsRef = db.collection("doctors");
@@ -73,14 +72,14 @@ export const GetInfo = functions.https.onRequest(
           return;
         }
         snapshot.forEach((doc: any) => {
-          var tempDocc: any = {};
-          tempDocc.name = doc.data().name;
-          tempDocc.phone = doc.data().phone;
-          tempDocc.address = doc.data().address;
-          tempDocc.appointmentcalendar = doc.data().appointmentcalendar;
-          tempDocc.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
-          res.json(tempDocc);
-          console.log(tempDocc);
+          //var tempDocc: any = {};
+          tempDoctor.name = doc.data().name;
+          tempDoctor.phone = doc.data().phone;
+          tempDoctor.address = doc.data().address;
+          tempDoctor.appointmentcalendar = doc.data().appointmentcalendar;
+          tempDoctor.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
+          res.json(tempDoctor);
+          console.log(tempDoctor);
         });
       })
       .catch((err) => {
@@ -107,7 +106,6 @@ const ERROR_RESPONSE = {
   status: "500",
   message: "There was an error adding an event to your Google calendar",
 };
-
 const TIME_ZONE = "Time zone in Katubedda, Moratuwa (GMT+5:30)"; //EST  +5:30
 
 //**------------------------- response doctors booking time slots['date','starttime','endtime']  function [3] ----start
@@ -117,7 +115,7 @@ export const GetDoctorBookingCalendar = functions.https.onRequest(
     reqDate = {
       date: request.body.date, //"2020-07-31 00:00:00.000"//request.body.date
     };
-console.log(reqDate.date)
+    console.log(reqDate.date);
     var items: any = await listEvents(oAuth2Client);
     var newItem: any = await listBookingEvents(oAuth2Client);
     var timeSlot: any = [];
@@ -141,7 +139,6 @@ console.log(reqDate.date)
 function listEvents(auth: any) {
   return new Promise((resolve, reject) => {
     const calendar2 = google.calendar({ version: "v3", auth });
-    const moment = require("moment");
     var firstTime = moment(reqDate.date, "YYYY-MM-DD h:m").toISOString();
     var lastTime = moment(reqDate.date, "YYYY-MM-DD h:m")
       .endOf("day")
@@ -151,7 +148,7 @@ function listEvents(auth: any) {
 
     calendar2.events.list(
       {
-        calendarId: "primary", //"primary"
+        calendarId: "primary", //"primary" tempDoctor..appointmentcalendar
         timeMin: !reqDate.date ? min : firstTime, //moment().startOf('day').toISOString(), //moment().subtract(1, "days").toISOString(),
         timeMax: !reqDate.date ? max : lastTime, //moment().endOf('day').toISOString(),
         maxResults: 100,
@@ -159,13 +156,10 @@ function listEvents(auth: any) {
         orderBy: "startTime",
       },
       (err: any, res: any) => {
-        if (err) return console.log("The API returned an error: " + err);
+        // if (err) return console.log("The API returned an error: " + err);
         const events = res.data.items;
         if (events) {
           console.log("Upcoming 100 events:");
-          const Moment = require("moment");
-          const MomentRange = require("moment-range");
-          const moment = MomentRange.extendMoment(Moment);
           var evv: any = [];
           var arrNoBook: any = [];
           events.forEach((event: any) => {
@@ -195,19 +189,19 @@ function listEvents(auth: any) {
           for (let i of arr) {
             const range = moment.range(i.start, i.end);
             const rangeBy = range.by("minutes", { step: 15 });
-            var res: any = {};
-            res = Array.from(rangeBy).map((m: any) => ({
+            var result: any = {};
+            result = Array.from(rangeBy).map((m: any) => ({
               date: i.date,
               startTime: moment(m.toString()).format("HH:mm"),
               endTime: moment(m.add(15, "m").toString()).format("HH:mm"),
               slot: 0,
             }));
             if (true) {
-              res[res.length - 1].endTime = moment(i.end.toISOString()).format(
-                "HH:mm"
-              );
+              result[result.length - 1].endTime = moment(
+                i.end.toISOString()
+              ).format("HH:mm");
             }
-            arrNoBook.push(res);
+            arrNoBook.push(result);
           }
           resolve(arrNoBook);
         } else {
@@ -225,17 +219,15 @@ export const GetDoctorAppointments = functions.https.onRequest(
   async (req, res) => {
     let temp = await listBookingEvents(oAuth2Client);
     res.json(temp);
-    //console.log(temp);
   }
 );
 
 function listBookingEvents(auth: any) {
   return new Promise((resolve: any, reject) => {
     const calendar2 = google.calendar({ version: "v3", auth });
-    const moment = require("moment");
     calendar2.events.list(
       {
-        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com",
+        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com",//tempDoctor.bookingcalendar
         timeMin: moment().subtract(1, "days").endOf("day").toISOString(),
         timeMax: moment().add(1, "days").endOf("day").toISOString(),
         maxResults: 100,
@@ -243,12 +235,12 @@ function listBookingEvents(auth: any) {
         orderBy: "startTime",
       },
       (err: any, res: any) => {
-        if (err) return console.log("The API returned an error: " + err);
+        // if (err) return console.log("The API returned an error: " + err);
         const events = res.data.items;
         if (events) {
           console.log("Upcoming 100 events:");
           let bookedEventList: any = [];
-          events.forEach((event: any, res: any) => {
+          events.forEach((event: any) => {
             var tempEvent: any = {};
 
             if (event.status == "confirmed") {
@@ -261,10 +253,8 @@ function listBookingEvents(auth: any) {
               tempEvent.endTime = moment(event.end.dateTime).format("HH:mm");
               tempEvent.slot = 1;
               bookedEventList.push(tempEvent);
-            } //console.log(event.start.dateTime);
+            }
           });
-
-          // console.log(bookedEventList);
           resolve(bookedEventList);
         } else {
           resolve("No upcoming events found.");
@@ -288,9 +278,7 @@ export const BookDoctor = functions.https.onRequest(
       idno: request.body.idno,
       age: request.body.age,
       address: request.body.address,
-      //phone: request.body.phone,
       mobile: request.body.mobile,
-      // symptom: request.body.symptom,
     };
     console.log(eventData);
     addEventBooking(eventData, oAuth2Client)
@@ -339,9 +327,7 @@ function addEventBooking(event: any, auth: any) {
               idno: event.idno,
               age: event.age,
               address: event.address,
-              // phone: event.phone,
               mobile: event.mobile,
-              //symptom: event.symptom,
             },
           },
         },
