@@ -169,10 +169,10 @@ function listEvents(auth: any) {
                 "YYYY-MM-DD"
               );
               tempEvent.sTime = moment(event.start.dateTime).format(
-                "YYYY-MM-DDTHH:mm"
+                
               );
               tempEvent.eTime = moment(event.end.dateTime).format(
-                "YYYY-MM-DDTHH:mm"
+                
               );
               evv.push(tempEvent);
             }
@@ -181,9 +181,11 @@ function listEvents(auth: any) {
 
           evv.forEach(function (value: any) {
             var memo: any = {};
+            console.log(value.sTime);
+            
             memo.date = value.Date;
-            memo.start = moment(value.sTime);
-            memo.end = moment(value.eTime);
+            memo.start = value.sTime;
+            memo.end = value.eTime;
             arr.push(memo);
           });
           for (let i of arr) {
@@ -192,13 +194,13 @@ function listEvents(auth: any) {
             var result: any = {};
             result = Array.from(rangeBy).map((m: any) => ({
               date: i.date,
-              startTime: moment(m.toString()).format("HH:mm"),
-              endTime: moment(m.add(15, "m").toString()).format("HH:mm"),
+              startTime: moment(m).format("HH:mm"),
+              endTime: moment(m.add(15, "m")).format("HH:mm"),
               slot: 0,
             }));
             if (true) {
               result[result.length - 1].endTime = moment(
-                i.end.toISOString()
+                i.end
               ).format("HH:mm");
             }
             arrNoBook.push(result);
