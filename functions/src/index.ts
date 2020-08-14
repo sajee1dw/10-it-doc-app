@@ -116,8 +116,10 @@ export const GetDoctorBookingCalendar = functions.https.onRequest(
       date: request.body.date, //"2020-07-31 00:00:00.000"//request.body.date
     };
     console.log(reqDate.date);
+    var min: any = moment().subtract(1, "days").endOf("day").toISOString();
+    var max: any = moment().add(1, "days").endOf("day").toISOString();
     var items: any = await listEvents(oAuth2Client);
-    var newItem: any = await listBookingEvents(oAuth2Client);
+    var newItem: any = await listBookingEvents(oAuth2Client, min, max);
     var timeSlot: any = [];
     items.forEach(function (item: any) {
       var removed = item.splice(-1, 1);
@@ -168,12 +170,8 @@ function listEvents(auth: any) {
               tempEvent.Date = moment(event.start.dateTime).format(
                 "YYYY-MM-DD"
               );
-              tempEvent.sTime = moment(event.start.dateTime).format(
-                
-              );
-              tempEvent.eTime = moment(event.end.dateTime).format(
-                
-              );
+              tempEvent.sTime = moment(event.start.dateTime).format();
+              tempEvent.eTime = moment(event.end.dateTime).format();
               evv.push(tempEvent);
             }
           });
@@ -182,7 +180,7 @@ function listEvents(auth: any) {
           evv.forEach(function (value: any) {
             var memo: any = {};
             console.log(value.sTime);
-            
+
             memo.date = value.Date;
             memo.start = value.sTime;
             memo.end = value.eTime;
@@ -199,9 +197,7 @@ function listEvents(auth: any) {
               slot: 0,
             }));
             if (true) {
-              result[result.length - 1].endTime = moment(
-                i.end
-              ).format("HH:mm");
+              result[result.length - 1].endTime = moment(i.end).format("HH:mm");
             }
             arrNoBook.push(result);
           }
@@ -219,19 +215,21 @@ function listEvents(auth: any) {
 //**-----------------------------response booked time slots ['date','starttime','endtime'] function [4] ---start
 export const GetDoctorAppointments = functions.https.onRequest(
   async (req, res) => {
-    let temp = await listBookingEvents(oAuth2Client);
+    var min: any = moment().subtract(1, "days").endOf("day").toISOString();
+    var max: any = moment().add(1, "days").endOf("day").toISOString();
+    let temp = await listBookingEvents(oAuth2Client, min, max);
     res.json(temp);
   }
 );
 
-function listBookingEvents(auth: any) {
+function listBookingEvents(auth: any, minDate: any, maxDate: any) {
   return new Promise((resolve: any, reject) => {
     const calendar2 = google.calendar({ version: "v3", auth });
     calendar2.events.list(
       {
-        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com",//tempDoctor.bookingcalendar
-        timeMin: moment().subtract(1, "days").endOf("day").toISOString(),
-        timeMax: moment().add(1, "days").endOf("day").toISOString(),
+        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com", //tempDoctor.bookingcalendar
+        timeMin: minDate, //moment().subtract(1, "days").endOf("day").toISOString(),
+        timeMax: maxDate, //moment().add(1, "days").endOf("day").toISOString(),
         maxResults: 100,
         singleEvents: true,
         orderBy: "startTime",
@@ -269,6 +267,7 @@ function listBookingEvents(auth: any) {
 ////<----------------------------------------------------------------end------------------------------------------------------------------->
 
 //**------------------------response/request patient data function [5] ---- start
+
 export const BookDoctor = functions.https.onRequest(
   async (request, response) => {
     const eventData = {
@@ -276,31 +275,50 @@ export const BookDoctor = functions.https.onRequest(
       startTime: request.body.startTime, //"2020-04-20T08:00:00"
       endTime: request.body.endTime, //"2020-04-20T08:30:00"
       name: request.body.name,
-      patient: request.body.patient,
+      patient: request.body.patientName,
       idno: request.body.idno,
       age: request.body.age,
       address: request.body.address,
       mobile: request.body.mobile,
     };
-    console.log(eventData);
-    addEventBooking(eventData, oAuth2Client)
-      .then((data) => {
-        response.json({ data });
-        console.log(data);
-        console.log("ok");
-        return;
-      })
-      .catch((err) => {
-        console.error("Error adding event: " + err.message);
-        response.json({ ERROR_RESPONSE });
-        return;
-      });
-    var hip: any = {};
-    hip.date = moment(eventData.startTime).format("YYYY-MM-DD");
-    hip.start = moment(eventData.startTime).format("hh-mm");
-    hip.end = moment(eventData.endTime).format("hh-mm");
+    var min: any = moment(eventData.startTime).toISOString();
+    var max: any = moment(eventData.endTime).toISOString();
+    var temp = await listBookingEvents(oAuth2Client, min, max);
+    console.log(temp);
+    const myArrStr = JSON.stringify(temp);
+    console.log(myArrStr.length);
+    var x: any;
+    myArrStr.length == 2 ? (x = "0") : (x = "1");
+    if (x == 0) {
+      addEventBooking(eventData, oAuth2Client)
+        .then((data) => {
+          response.json({ data });
+          console.log(data);
+          console.log("ok");
+          return;
+        })
+        .catch((err) => {
+          console.error("Error adding event: " + err.message);
+          response.json({ ERROR_RESPONSE });
+          return;
+        });
+    }
 
-    response.json(hip);
+    var eventDetails: any = {};
+    console.log(eventData);
+    console.log(eventData.startTime);
+    eventDetails.date = moment(eventData.startTime).format("YYYY-MM-DD");
+    eventDetails.start = moment(eventData.startTime).format("HH:mm");
+    eventDetails.end = moment(eventData.endTime).format("HH:mm");
+    eventDetails.name = eventData.name;
+    eventDetails.patient = eventData.patient;
+    eventDetails.idno = eventData.idno;
+    eventDetails.age = eventData.age;
+    eventDetails.address = eventData.address;
+    eventDetails.mobile = eventData.mobile;
+    eventDetails.bValue = x;
+    console.log(eventDetails);
+    response.json(eventDetails);
   }
 );
 
