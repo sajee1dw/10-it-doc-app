@@ -53,41 +53,41 @@ export const GetDoctorsAreaList = functions.https.onRequest(
 //// <------------------------------------------------------------end----------------------------------------------------------------------->
 
 //**----------------------to get doctors infors[name,phone,address,appint,booking caiendars] function: [2] ---start
-var tempDoctor: any = {};
-export const GetInfo = functions.https.onRequest(
-  async (request: any, res: any) => {
-    let doctorsRef = db.collection("doctors");
-    const infoData = {
-      docArea: request.body.docArea,
-      docSuburb: request.body.docSuburb,
-      docName: request.body.docName,
-    };
-    console.log(infoData);
-    let query = doctorsRef
-      .where("name", "==", infoData.docName)
-      .get()
-      .then((snapshot) => {
-        if (snapshot.empty) {
-          console.log("No matching documents.");
-          return;
-        }
-        snapshot.forEach((doc: any) => {
-          //var tempDocc: any = {};
-          tempDoctor.name = doc.data().name;
-          tempDoctor.phone = doc.data().phone;
-          tempDoctor.address = doc.data().address;
-          tempDoctor.appointmentcalendar = doc.data().appointmentcalendar;
-          tempDoctor.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
-          res.json(tempDoctor);
-          console.log(tempDoctor);
-        });
-      })
-      .catch((err) => {
-        console.log("Error getting documents", err);
+
+export const GetInfo = functions.https.onRequest(async (request, response) => {
+  let doctorsRef = db.collection("doctors");
+  const infoData = {
+    docArea: request.body.docArea,
+    docSuburb: request.body.docSuburb,
+    docName: request.body.docName,
+  };
+  console.log(infoData);
+  let query = doctorsRef
+    .where("area", "==", infoData.docArea)
+    .where("suburb", "==", infoData.docSuburb)
+    .where("name", "==", infoData.docName)
+    .get()
+    .then((snapshot) => {
+      if (snapshot.empty) {
+        console.log("No matching documents.");
+        return;
+      }
+      snapshot.forEach((doc: any) => {
+        var tempDoctor: any = {};
+        tempDoctor.name = doc.data().name;
+        tempDoctor.phone = doc.data().phone;
+        tempDoctor.address = doc.data().address;
+        tempDoctor.appointmentcalendar = doc.data().appointmentcalendar;
+        tempDoctor.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
+        console.log(tempDoctor);
+        response.json(tempDoctor);
       });
-    return query;
-  }
-);
+    })
+    .catch((err) => {
+      console.log("Error getting documents", err);
+    });
+  return query;
+});
 
 //// <---------------------------------------------------------end----------------------------------------------------------------------->
 
@@ -114,12 +114,23 @@ export const GetDoctorBookingCalendar = functions.https.onRequest(
   async (request, response) => {
     reqDate = {
       date: request.body.date, //"2020-07-31 00:00:00.000"//request.body.date
+      bookingcalendar: request.body.bookingcalendar,
+      appointmentcalendar: request.body.appointmentcalendar,
     };
     console.log(reqDate.date);
+    console.log(reqDate.appointmentcalendar);
+    console.log(reqDate.bookingcalendar);
     var min: any = moment().subtract(1, "days").endOf("day").toISOString();
     var max: any = moment().add(1, "days").endOf("day").toISOString();
-    var items: any = await listEvents(oAuth2Client);
-    var newItem: any = await listBookingEvents(oAuth2Client, min, max);
+    var appointmentcalendarID: any = reqDate.appointmentcalendar;
+    var bookingcalendarID: any = reqDate.bookingcalendar;
+    var items: any = await listEvents(oAuth2Client, appointmentcalendarID);
+    var newItem: any = await listBookingEvents(
+      oAuth2Client,
+      min,
+      max,
+      bookingcalendarID
+    );
     var timeSlot: any = [];
     items.forEach(function (item: any) {
       var removed = item.splice(-1, 1);
@@ -138,7 +149,7 @@ export const GetDoctorBookingCalendar = functions.https.onRequest(
   }
 );
 
-function listEvents(auth: any) {
+function listEvents(auth: any, appointmentcalendarID: any) {
   return new Promise((resolve, reject) => {
     const calendar2 = google.calendar({ version: "v3", auth });
     var firstTime = moment(reqDate.date, "YYYY-MM-DD h:m").toISOString();
@@ -150,7 +161,7 @@ function listEvents(auth: any) {
 
     calendar2.events.list(
       {
-        calendarId: "primary", //"primary" tempDoctor..appointmentcalendar
+        calendarId: appointmentcalendarID, //"primary"
         timeMin: !reqDate.date ? min : firstTime, //moment().startOf('day').toISOString(), //moment().subtract(1, "days").toISOString(),
         timeMax: !reqDate.date ? max : lastTime, //moment().endOf('day').toISOString(),
         maxResults: 100,
@@ -214,20 +225,32 @@ function listEvents(auth: any) {
 
 //**-----------------------------response booked time slots ['date','starttime','endtime'] function [4] ---start
 export const GetDoctorAppointments = functions.https.onRequest(
-  async (req, res) => {
+  async (request, response) => {
     var min: any = moment().subtract(1, "days").endOf("day").toISOString();
     var max: any = moment().add(1, "days").endOf("day").toISOString();
-    let temp = await listBookingEvents(oAuth2Client, min, max);
-    res.json(temp);
+    var bookingcalendarID: any = reqDate.bookingcalendar;
+    let temp = await listBookingEvents(
+      oAuth2Client,
+      min,
+      max,
+      bookingcalendarID
+    );
+    console.log(temp);
+    response.json(temp);
   }
 );
 
-function listBookingEvents(auth: any, minDate: any, maxDate: any) {
+function listBookingEvents(
+  auth: any,
+  minDate: any,
+  maxDate: any,
+  bookingcalendarID: any
+) {
   return new Promise((resolve: any, reject) => {
     const calendar2 = google.calendar({ version: "v3", auth });
     calendar2.events.list(
       {
-        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com", //tempDoctor.bookingcalendar
+        calendarId: bookingcalendarID, //"mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com", //tempDoctor.bookingcalendar
         timeMin: minDate, //moment().subtract(1, "days").endOf("day").toISOString(),
         timeMax: maxDate, //moment().add(1, "days").endOf("day").toISOString(),
         maxResults: 100,
@@ -235,8 +258,7 @@ function listBookingEvents(auth: any, minDate: any, maxDate: any) {
         orderBy: "startTime",
       },
       (err: any, res: any) => {
-        // if (err) return console.log("The API returned an error: " + err);
-        const events = res.data.items;
+        const events = res.data.items; //res.data.items
         if (events) {
           console.log("Upcoming 100 events:");
           let bookedEventList: any = [];
@@ -280,17 +302,30 @@ export const BookDoctor = functions.https.onRequest(
       age: request.body.age,
       address: request.body.address,
       mobile: request.body.mobile,
+      bookingcalendar: request.body.bookingcalendar,
     };
-    var min: any = moment(eventData.startTime).toISOString();
-    var max: any = moment(eventData.endTime).toISOString();
-    var temp = await listBookingEvents(oAuth2Client, min, max);
-    console.log(temp);
+    var min: any = moment.utc(eventData.startTime + "+05:30").toISOString();
+    var max: any = moment.utc(eventData.endTime + "+05:30").toISOString();
+
+    var bookingcalendarID: any = eventData.bookingcalendar;
+    var temp = await listBookingEvents(
+      oAuth2Client,
+      min,
+      max,
+      bookingcalendarID
+    );
+
+    console.log("hello listBookingEvents" + temp);
+    console.log("hello min time" + min);
+    console.log("hello starttime" + eventData.startTime);
+    console.log("hello ID" + bookingcalendarID);
+
     const myArrStr = JSON.stringify(temp);
     console.log(myArrStr.length);
     var x: any;
-    myArrStr.length == 2 ? (x = "0") : (x = "1");
-    if (x == 0) {
-      addEventBooking(eventData, oAuth2Client)
+    myArrStr.length == 2 ? (x = "1") : (x = "0");
+    if (x == 1) {
+      addEventBooking(eventData, oAuth2Client, bookingcalendarID)
         .then((data) => {
           response.json({ data });
           console.log(data);
@@ -322,14 +357,28 @@ export const BookDoctor = functions.https.onRequest(
   }
 );
 
-function addEventBooking(event: any, auth: any) {
+function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
   return new Promise(function (resolve, reject) {
     calendar.events.insert(
       {
         auth: auth,
-        calendarId: "mt6pgiacc0bqjqg5s86seh9qs4@group.calendar.google.com",
+        calendarId: bookingcalendarID,
+
         resource: {
           summary: event.eventName,
+          description:
+            "Creator Name  :" +
+            event.name +
+            "   Patient  :" +
+            event.patient +
+            "   Idno  :" +
+            event.idno +
+            "   Age  :" +
+            event.age +
+            "   Address  :" +
+            event.address +
+            "   Mobile  :" +
+            event.mobile,
           start: {
             date: event.date,
             dateTime: event.startTime,
@@ -352,13 +401,13 @@ function addEventBooking(event: any, auth: any) {
           },
         },
       },
-      (err: any, res: any) => {
+      (err: any, response: any) => {
         if (err) {
           console.log("Rejecting because of error");
           reject(err);
         }
         console.log("Request successful");
-        resolve(res.data);
+        resolve(response.data);
       }
     );
   });
