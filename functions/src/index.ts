@@ -302,7 +302,9 @@ export const BookDoctor = functions.https.onRequest(
       age: request.body.age,
       address: request.body.address,
       mobile: request.body.mobile,
+      doctorName: request.body.doctorname,
       bookingcalendar: request.body.bookingcalendar,
+      uniqueIdentifier: request.body.uniqueIdentifier,
     };
     var min: any = moment.utc(eventData.startTime + "+05:30").toISOString();
     var max: any = moment.utc(eventData.endTime + "+05:30").toISOString();
@@ -327,9 +329,10 @@ export const BookDoctor = functions.https.onRequest(
     if (x == 1) {
       addEventBooking(eventData, oAuth2Client, bookingcalendarID)
         .then((data) => {
-          response.json({ data });
-          console.log(data);
           console.log("ok");
+          response.json({ data });
+          //console.log(data);
+
           return;
         })
         .catch((err) => {
@@ -353,6 +356,35 @@ export const BookDoctor = functions.https.onRequest(
     eventDetails.mobile = eventData.mobile;
     eventDetails.bValue = x;
     console.log(eventDetails);
+    console.log(eventData.doctorName);
+    const dataLog = {
+      doctorName: eventData.doctorName,
+      startDateTime: eventData.startTime,
+      endDateTime: eventData.endTime,
+      name: eventData.name,
+      patient: eventData.patient,
+      idNo: eventData.idno,
+      age: eventData.age,
+      address: eventData.address,
+      mobile: eventData.mobile,
+      userId: eventData.uniqueIdentifier,
+      bValue: x,
+    };
+    const res = await db
+      .collection("log")
+      .doc(eventData.uniqueIdentifier + Number(new Date(eventData.startTime)))
+      .set(dataLog);
+    console.log("Set: ", res);
+    if (x == 1) {
+      const user = await db
+        .collection("user")
+        .doc(eventData.uniqueIdentifier)
+        .collection(eventData.startTime)
+        .doc(eventData.doctorName)
+        .set(dataLog);
+
+      console.log("Set: ", user);
+    }
     response.json(eventDetails);
   }
 );
@@ -412,3 +444,76 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
     );
   });
 }
+
+export const GetUserData = functions.https.onRequest(
+  async (request, response) => {
+    admin.firestore().collection;
+    
+    const infoData = {
+      docID: request.body.id,
+    };
+    const userEmi: any = infoData.docID;
+    var bookData: any = await bookList(userEmi);
+    var userInfo: any = {};
+    
+    try {
+      userInfo["user"] = [];
+       bookData.forEach((subCollection: any) => {
+        subCollection.get().then((array: any) => {
+          
+          array.docs.forEach((doc: any) => {
+            var tempData: any = {};
+            tempData = doc.data();
+            userInfo["user"].push(tempData);
+           
+          }); 
+          response.json(userInfo);
+          
+        });
+      });
+    } catch (e) {
+      console.log(e);
+    } 
+  }
+);
+                                                                                                                                                                                                                                                                                        
+function bookList(userEmi: any) {
+  return new Promise(function (resolve, reject) {
+    admin.firestore().collection;
+    try {
+      db.collection("user")
+        .doc(userEmi)
+        .listCollections()
+        .then((subCollections) => {
+          // subCollections.forEach((subCollection: any) => {
+          resolve(subCollections);
+          //  });
+        });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
+// export const GetUserData = functions.https.onRequest(
+//   async (request, response) => {
+//     admin.firestore().collection;
+//     const infoData = {
+//       docID: request.body.id,
+//     };
+//     db.collection("user")
+//       .doc(infoData.docID)
+//       .listCollections()
+//       .then((subCollections:any) => {
+//   console.log(subCollections)
+//         subCollections.forEach((subCollection:any) => {
+//           subCollection.get().then((array:any) => {
+//             array.docs.forEach((doc:any) => {
+
+//                //console.log(doc.data());
+//             });
+//           });
+//         });
+//       });
+//   }
+// );
