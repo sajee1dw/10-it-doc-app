@@ -1,6 +1,7 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 const { google } = require("googleapis");
+//const firebase_tools = require('firebase-tools');
 const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar("v3");
 
@@ -62,6 +63,7 @@ export const GetInfo = functions.https.onRequest(async (request, response) => {
     docName: request.body.docName,
   };
   console.log(infoData);
+  console.log(doctorsRef);
   let query = doctorsRef
     .where("area", "==", infoData.docArea)
     .where("suburb", "==", infoData.docSuburb)
@@ -77,6 +79,8 @@ export const GetInfo = functions.https.onRequest(async (request, response) => {
         tempDoctor.name = doc.data().name;
         tempDoctor.phone = doc.data().phone;
         tempDoctor.address = doc.data().address;
+        tempDoctor.area = doc.data().area;
+        tempDoctor.suburb = doc.data().suburb;
         tempDoctor.appointmentcalendar = doc.data().appointmentcalendar;
         tempDoctor.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
         console.log(tempDoctor);
@@ -305,6 +309,7 @@ export const BookDoctor = functions.https.onRequest(
       doctorName: request.body.doctorname,
       bookingcalendar: request.body.bookingcalendar,
       uniqueIdentifier: request.body.uniqueIdentifier,
+      createDateTime: request.body.createDateTime,
     };
     var min: any = moment.utc(eventData.startTime + "+05:30").toISOString();
     var max: any = moment.utc(eventData.endTime + "+05:30").toISOString();
@@ -336,8 +341,8 @@ export const BookDoctor = functions.https.onRequest(
           return;
         })
         .catch((err) => {
-          console.error("Error adding event: " + err.message);
-          response.json({ ERROR_RESPONSE });
+          console.error("Error adding event: " + err);
+          response.end({ ERROR_RESPONSE });
           return;
         });
     }
@@ -357,6 +362,8 @@ export const BookDoctor = functions.https.onRequest(
     eventDetails.bValue = x;
     console.log(eventDetails);
     console.log(eventData.doctorName);
+    response.json(eventDetails);
+
     const dataLog = {
       doctorName: eventData.doctorName,
       startDateTime: eventData.startTime,
@@ -369,12 +376,15 @@ export const BookDoctor = functions.https.onRequest(
       mobile: eventData.mobile,
       userId: eventData.uniqueIdentifier,
       bValue: x,
+      createDateTime: eventData.createDateTime,
     };
     const res = await db
       .collection("log")
       .doc(eventData.uniqueIdentifier + Number(new Date(eventData.startTime)))
       .set(dataLog);
+
     console.log("Set: ", res);
+
     if (x == 1) {
       const user = await db
         .collection("user")
@@ -385,7 +395,7 @@ export const BookDoctor = functions.https.onRequest(
 
       console.log("Set: ", user);
     }
-    response.json(eventDetails);
+    //response.json(eventDetails);
   }
 );
 
@@ -447,73 +457,91 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
 
 export const GetUserData = functions.https.onRequest(
   async (request, response) => {
-    admin.firestore().collection;
-    
-    const infoData = {
-      docID: request.body.id,
+    const userIdData = {
+      uID: request.body.uniqueIdentifier,
+      clearLogID: request.body.clearLogId,
     };
-    const userEmi: any = infoData.docID;
+    const userEmi: any = userIdData.uID; //"5cjkac68asscni88888936";
+    const clearEmi: any = userIdData.clearLogID;
+    var userArr: any = [];
+    var promises: any = [];
+    var finalUserData: any = [];
     var bookData: any = await bookList(userEmi);
-    var userInfo: any = {};
-    
-    try {
-      userInfo["user"] = [];
-       bookData.forEach((subCollection: any) => {
-        subCollection.get().then((array: any) => {
-          
-          array.docs.forEach((doc: any) => {
-            var tempData: any = {};
-            tempData = doc.data();
-            userInfo["user"].push(tempData);
-           
-          }); 
-          response.json(userInfo);
-          
-        });
+    if (userEmi == clearEmi) {
+      var userRemove: any = await clearLog(userEmi);
+      console.log(userRemove);
+      var Arr:any = [];
+      finalUserData.push(Arr);
+
+    }else{
+
+    promises = bookData.map(async (value: any) => {
+      const userData: any = db
+        .collection("user")
+        .doc(userEmi)
+        .collection(value);
+
+      const snapshot = await userData.get();
+
+      snapshot.forEach((doc: any) => {
+        var temp: any = {};
+        temp = doc.data();
+        console.log(temp);
+        userArr.push(temp);
       });
-    } catch (e) {
-      console.log(e);
-    } 
+    });
+
+    await Promise.all(promises);
+    finalUserData.push(userArr);
+  }
+    console.log(finalUserData);
+    response.json(finalUserData);
   }
 );
-                                                                                                                                                                                                                                                                                        
+
 function bookList(userEmi: any) {
-  return new Promise(function (resolve, reject) {
+  return new Promise(async function (resolve, reject) {
     admin.firestore().collection;
+    var userArr: any = [];
     try {
-      db.collection("user")
-        .doc(userEmi)
-        .listCollections()
-        .then((subCollections) => {
-          // subCollections.forEach((subCollection: any) => {
-          resolve(subCollections);
-          //  });
-        });
+      const sfRef = db.collection("user").doc(userEmi);
+      const collections = await sfRef.listCollections();
+      collections.forEach((collection) => {
+        var temp: any = {};
+        temp = collection.id;
+        userArr.push(temp);
+      });
     } catch (e) {
       console.error(e);
     }
+    resolve(userArr);
   });
 }
 
-// export const GetUserData = functions.https.onRequest(
-//   async (request, response) => {
-//     admin.firestore().collection;
-//     const infoData = {
-//       docID: request.body.id,
-//     };
-//     db.collection("user")
-//       .doc(infoData.docID)
-//       .listCollections()
-//       .then((subCollections:any) => {
-//   console.log(subCollections)
-//         subCollections.forEach((subCollection:any) => {
-//           subCollection.get().then((array:any) => {
-//             array.docs.forEach((doc:any) => {
+function clearLog(userEmi: any) {
+  return new Promise(async function (resolve, reject) {
+    var bookData: any = await bookList(userEmi);
+    var promises: any = [];
+    promises = bookData.map(async (value: any) => {
+      const userData: any = db
+        .collection("user")
+        .doc(userEmi)
+        .collection(value);
 
-//                //console.log(doc.data());
-//             });
-//           });
-//         });
-//       });
-//   }
-// );
+      const snapshot = await userData.get();
+
+      snapshot.forEach((doc: any) => {
+        const clearUser: any = db
+          .collection("user")
+          .doc(userEmi)
+          .collection(value)
+          .doc(doc.id)
+          .delete();
+        console.log(clearUser);
+      });
+    });
+
+    await Promise.all(promises);
+    resolve("successfully deleted!");
+  });
+}
