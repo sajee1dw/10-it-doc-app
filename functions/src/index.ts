@@ -264,7 +264,7 @@ function listBookingEvents(
       (err: any, res: any) => {
         const events = res.data.items; //res.data.items
         if (events) {
-          console.log("Upcoming 100 events:");
+          console.log("Upcoming Booking events ****** :");
           let bookedEventList: any = [];
           events.forEach((event: any) => {
             var tempEvent: any = {};
@@ -313,8 +313,9 @@ export const BookDoctor = functions.https.onRequest(
     };
     var min: any = moment.utc(eventData.startTime + "+05:30").toISOString();
     var max: any = moment.utc(eventData.endTime + "+05:30").toISOString();
-
+    console.log(min +"time slot with utc"+ max);
     var bookingcalendarID: any = eventData.bookingcalendar;
+
     var temp = await listBookingEvents(
       oAuth2Client,
       min,
@@ -362,7 +363,7 @@ export const BookDoctor = functions.https.onRequest(
     eventDetails.bValue = x;
     console.log(eventDetails);
     console.log(eventData.doctorName);
-    response.json(eventDetails);
+   // response.json(eventDetails);
 
     const dataLog = {
       doctorName: eventData.doctorName,
@@ -395,7 +396,7 @@ export const BookDoctor = functions.https.onRequest(
 
       console.log("Set: ", user);
     }
-    //response.json(eventDetails);
+    response.json(eventDetails);
   }
 );
 
@@ -463,6 +464,8 @@ export const GetUserData = functions.https.onRequest(
     };
     const userEmi: any = userIdData.uID; //"5cjkac68asscni88888936";
     const clearEmi: any = userIdData.clearLogID;
+    console.log(userEmi);
+    console.log(clearEmi);
     var userArr: any = [];
     var promises: any = [];
     var finalUserData: any = [];
@@ -470,30 +473,30 @@ export const GetUserData = functions.https.onRequest(
     if (userEmi == clearEmi) {
       var userRemove: any = await clearLog(userEmi);
       console.log(userRemove);
-      var Arr:any = [];
+      var Arr: any = [];
       finalUserData.push(Arr);
 
-    }else{
+    } else {
 
-    promises = bookData.map(async (value: any) => {
-      const userData: any = db
-        .collection("user")
-        .doc(userEmi)
-        .collection(value);
+      promises = bookData.map(async (value: any) => {
+        const userData: any = db
+          .collection("user")
+          .doc(userEmi)
+          .collection(value);
 
-      const snapshot = await userData.get();
+        const snapshot = await userData.get();
 
-      snapshot.forEach((doc: any) => {
-        var temp: any = {};
-        temp = doc.data();
-        console.log(temp);
-        userArr.push(temp);
+        snapshot.forEach((doc: any) => {
+          var temp: any = {};
+          temp = doc.data();
+          console.log(temp);
+          userArr.push(temp);
+        });
       });
-    });
 
-    await Promise.all(promises);
-    finalUserData.push(userArr);
-  }
+      await Promise.all(promises);
+      finalUserData.push(userArr);
+    }
     console.log(finalUserData);
     response.json(finalUserData);
   }
