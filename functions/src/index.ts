@@ -148,7 +148,7 @@ export const GetDoctorBookingCalendar = functions.https.onRequest(
           Date: value.Date,
           startTime: value.startTime,
           endTime: value.endTime,
-         // slot: 1,
+          // slot: 1,
           count: 1
         }
         map.set(currKey, newObj);
@@ -366,13 +366,13 @@ export const BookDoctor = functions.https.onRequest(
       createDateTime: request.body.createDateTime,
       fullTitle: request.body.fullTitle,
     };
-    console.log(eventData);
+    //console.log(eventData);
     var min: any = moment.utc(eventData.startTime + "+05:30").toISOString();
     var max: any = moment.utc(eventData.endTime + "+05:30").toISOString();
     console.log(min + "time slot with utc" + max);
     var bookingcalendarID: any = eventData.bookingcalendar;
 
-    var temp:any = await listBookingEvents(oAuth2Client, min, max, bookingcalendarID);
+    var temp: any = await listBookingEvents(oAuth2Client, min, max, bookingcalendarID);
 
     console.log("hello listBookingEvents" + temp);
     console.log("hello min time" + min);
@@ -384,50 +384,51 @@ export const BookDoctor = functions.https.onRequest(
     // var x: any;
     // myArrStr.length == 2 ? (x = "1") : (x = "0");
     var map = new Map();
-temp.forEach((value:any) => {
-    let currKey = JSON.stringify(value);
-    let currValue = map.get(currKey);
-    if (currValue) {
+    temp.forEach((value: any) => {
+      let currKey = JSON.stringify(value);
+      let currValue = map.get(currKey);
+      if (currValue) {
         currValue.count += 1;
         map.set(currKey, currValue);
-    } else {
+      } else {
 
         let newObj = {
-            title: value.title,
-            Date: value.Date,
-            startTime: value.startTime,
-            endTime: value.endTime,
-            count: 1
+          title: value.title,
+          Date: value.Date,
+          startTime: value.startTime,
+          endTime: value.endTime,
+          count: 1
         }
         map.set(currKey, newObj);
-    }
-})
+      }
+    })
 
-var filterdArray:any = Array.from(map).map(e => e[1]);
-console.log(filterdArray);
+    var filterdArray: any = Array.from(map).map(e => e[1]);
+    console.log(filterdArray);
 
-var mainTitle = eventData.eventName;
-const myArrStr:any = JSON.stringify(filterdArray);
-var x;
-if(myArrStr.length == 2){
- x = "1";
-}else{
-  filterdArray.forEach((value:any) => {
-    if (mainTitle == value.title) {
-        var allSlots = (value.title).split('-')[2];
-
-        if (allSlots > value.count) {
-            x = "1";
-        } else {
-            x = "0";
-        }
-    }else{
+    var mainTitle = eventData.fullTitle;
+    const myArrStr: any = JSON.stringify(filterdArray);
+    var x;
+    console.log(myArrStr.length);
+    console.log(mainTitle);
+    if (myArrStr.length == 2) {
       x = "1";
+    } else {
+      filterdArray.forEach((value: any) => {
+        if (mainTitle == value.title) {
+          var allSlots = (value.title).split('-')[2];
+          if (allSlots > value.count) {
+            x = "1";
+          } else {
+            x = "0";
+          }
+        } else {
+          x = "1";
+        }
+      });
     }
-});
-}
 
-console.log(x);
+    console.log(x);
     if (x == "1") {
       addEventBooking(eventData, oAuth2Client, bookingcalendarID)
         .then((data) => {
@@ -474,7 +475,7 @@ console.log(x);
       mobile: eventData.mobile,
       userId: eventData.uniqueIdentifier,
       bValue: x,
-      title:eventData.fullTitle,
+      title: eventData.fullTitle,
       createDateTime: eventData.createDateTime,
     };
     const res = await db
@@ -519,7 +520,7 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
             "   Address  :" +
             event.address +
             "   Mobile  :" +
-            event.mobile+
+            event.mobile +
             "   Title  :" +
             event.fullTitle,
           start: {
