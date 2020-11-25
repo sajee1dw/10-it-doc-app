@@ -56,41 +56,31 @@ export const GetDoctorsAreaList = functions.https.onRequest(
 //**----------------------to get doctors infors[name,phone,address,appint,booking caiendars] function: [2] ---start
 
 export const GetInfo = functions.https.onRequest(async (request, response) => {
-  let doctorsRef = db.collection("doctors");
   const infoData = {
-    docArea: request.body.docArea,
-    docSuburb: request.body.docSuburb,
-    docName: request.body.docName,
+    userInfo: request.body.userId,
   };
-  console.log(infoData);
-  console.log(doctorsRef);
-  let query = doctorsRef
-    .where("area", "==", infoData.docArea)
-    .where("suburb", "==", infoData.docSuburb)
-    .where("name", "==", infoData.docName)
-    .get()
-    .then((snapshot) => {
-      if (snapshot.empty) {
-        console.log("No matching documents.");
-        return;
-      }
-      snapshot.forEach((doc: any) => {
-        var tempDoctor: any = {};
-        tempDoctor.name = doc.data().name;
-        tempDoctor.phone = doc.data().phone;
-        tempDoctor.address = doc.data().address;
-        tempDoctor.area = doc.data().area;
-        tempDoctor.suburb = doc.data().suburb;
-        tempDoctor.appointmentcalendar = doc.data().appointmentcalendar;
-        tempDoctor.bookingcalendar = doc.data().bookingcalendar; // ||"N/A"
-        console.log(tempDoctor);
-        response.json(tempDoctor);
-      });
-    })
-    .catch((err) => {
-      console.log("Error getting documents", err);
-    });
-  return query;
+  const userData:any = db.collection('doctors').doc(infoData.userInfo);
+  let doc:any  = await userData.get();
+  try{
+    if (!doc.exists) {
+      console.log('No such document!');
+    } else {
+      var tempUser: any = {};
+          tempUser.name = doc.data().name;
+          tempUser.phone = doc.data().phone;
+          tempUser.address = doc.data().address;
+          tempUser.area = doc.data().area;
+          tempUser.suburb = doc.data().suburb;
+          tempUser.appointmentcalendar = doc.data().appointmentcalendar;
+          tempUser.bookingcalendar = doc.data().bookingcalendar; 
+          console.log(tempUser);
+          
+    }
+  }catch (e) {
+    console.error(e);
+  }
+  
+  response.json(tempUser);
 });
 
 //// <---------------------------------------------------------end----------------------------------------------------------------------->
@@ -355,9 +345,9 @@ export const BookDoctor = functions.https.onRequest(
       startTime: request.body.startTime, //"2020-04-20T08:00:00"
       endTime: request.body.endTime, //"2020-04-20T08:30:00"
       name: request.body.name,
-      patient: request.body.patientName,
-      idno: request.body.idno,
-      age: request.body.age,
+      // patient: request.body.patientName,
+      // idno: request.body.idno,
+      // age: request.body.age,
       address: request.body.address,
       mobile: request.body.mobile,
       doctorName: request.body.doctorname,
@@ -452,9 +442,9 @@ export const BookDoctor = functions.https.onRequest(
     eventDetails.start = moment(eventData.startTime).format("HH:mm");
     eventDetails.end = moment(eventData.endTime).format("HH:mm");
     eventDetails.name = eventData.name;
-    eventDetails.patient = eventData.patient;
-    eventDetails.idno = eventData.idno;
-    eventDetails.age = eventData.age;
+    // eventDetails.patient = eventData.patient;
+    // eventDetails.idno = eventData.idno;
+    // eventDetails.age = eventData.age;
     eventDetails.address = eventData.address;
     eventDetails.mobile = eventData.mobile;
     eventDetails.bValue = x;
@@ -468,9 +458,9 @@ export const BookDoctor = functions.https.onRequest(
       startDateTime: eventData.startTime,
       endDateTime: eventData.endTime,
       name: eventData.name,
-      patient: eventData.patient,
-      idNo: eventData.idno,
-      age: eventData.age,
+      // patient: eventData.patient,
+      // idNo: eventData.idno,
+      // age: eventData.age,
       address: eventData.address,
       mobile: eventData.mobile,
       userId: eventData.uniqueIdentifier,
@@ -511,12 +501,12 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
           description:
             "Creator Name  :" +
             event.name +
-            "   Patient  :" +
-            event.patient +
-            "   Idno  :" +
-            event.idno +
-            "   Age  :" +
-            event.age +
+            // "   Patient  :" +
+            // event.patient +
+            // "   Idno  :" +
+            // event.idno +
+            // "   Age  :" +
+            // event.age +
             "   Address  :" +
             event.address +
             "   Mobile  :" +
@@ -536,9 +526,9 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
           extendedProperties: {
             shared: {
               name: event.name,
-              patient: event.patient,
-              idno: event.idno,
-              age: event.age,
+              // patient: event.patient,
+              // idno: event.idno,
+              // age: event.age,
               address: event.address,
               mobile: event.mobile,
               title: event.fullTitle,
