@@ -6,7 +6,7 @@ const OAuth2 = google.auth.OAuth2;
 const calendar = google.calendar("v3");
 
 const googleCredentials = require("../keys/credentials.json");
-
+//var storage = require('@google-cloud/storage');
 admin.initializeApp({
   credential: admin.credential.cert(require("../keys/admin.json")),
   databaseURL: "https://book-my-doctor-eadd7.firebaseio.com",
@@ -14,7 +14,9 @@ admin.initializeApp({
 const Moment = require("moment");
 const MomentRange = require("moment-range");
 const moment = MomentRange.extendMoment(Moment);
+
 const db = admin.firestore();
+const storage = admin.storage();
 
 //**----------------------------- response area,suberb,doctors function: [1] ----start
 
@@ -59,29 +61,53 @@ export const GetInfo = functions.https.onRequest(async (request, response) => {
   const infoData = {
     userInfo: request.body.userId,
   };
-  const userData:any = db.collection('doctors').doc(infoData.userInfo);
-  let doc:any  = await userData.get();
-  try{
+  const userData: any = db.collection('doctors').doc(infoData.userInfo);
+  let doc: any = await userData.get();
+  try {
     if (!doc.exists) {
       console.log('No such document!');
     } else {
+      var storageLogo:any = doc.data().logo
+      var logoLink:any=  await GetLogo(storageLogo);
+     //console.log(logoLink);
       var tempUser: any = {};
-          tempUser.name = doc.data().name;
-          tempUser.phone = doc.data().phone;
-          tempUser.address = doc.data().address;
-          tempUser.area = doc.data().area;
-          tempUser.suburb = doc.data().suburb;
-          tempUser.appointmentcalendar = doc.data().appointmentcalendar;
-          tempUser.bookingcalendar = doc.data().bookingcalendar; 
-          console.log(tempUser);
-          
+      tempUser.id = doc.id;
+      tempUser.name = doc.data().name;
+      tempUser.phone = doc.data().phone;
+      tempUser.address = doc.data().address;
+      tempUser.area = doc.data().area;
+      tempUser.suburb = doc.data().suburb;
+      tempUser.appointmentcalendar = doc.data().appointmentcalendar;
+      tempUser.bookingcalendar = doc.data().bookingcalendar;
+      tempUser.logo = logoLink;
+      console.log(tempUser);
+
     }
-  }catch (e) {
+  } catch (e) {
     console.error(e);
   }
-  
+
   response.json(tempUser);
 });
+
+
+
+
+ function GetLogo(imageName:any){
+  //const gcs = require('@google-cloud/storage');
+  const bucket = storage.bucket('gs://book-my-doctor-eadd7.appspot.com');
+  
+  const file = bucket.file(imageName);
+          return file.getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491'
+          }).then((signedUrls:any)=>{
+              console.log('signed URL', signedUrls[0]); // this will contain the picture's url
+              return signedUrls[0];
+      }) .catch((err:any) => {
+        console.error("Error getting URl: " + err);
+      });
+ }
 
 //// <---------------------------------------------------------end----------------------------------------------------------------------->
 
@@ -491,13 +517,15 @@ export const BookDoctor = functions.https.onRequest(
 
 function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
   return new Promise(function (resolve, reject) {
+    var eventSummaryTitle = (event.fullTitle).split("-")[0];
     calendar.events.insert(
+
       {
         auth: auth,
         calendarId: bookingcalendarID,
 
         resource: {
-          summary: event.eventName,
+          summary: eventSummaryTitle + "-" + event.eventName,
           description:
             "Creator Name  :" +
             event.name +
@@ -547,7 +575,7 @@ function addEventBooking(event: any, auth: any, bookingcalendarID: any) {
     );
   });
 }
-
+//////////////////////////////////////////////////////////////Function(06)///////
 export const GetUserData = functions.https.onRequest(
   async (request, response) => {
     const userIdData = {
