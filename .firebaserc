@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "book-my-doctor-eadd7"
+    "default": "book-my-doctor-eadd7",
+    "staging": "bookme10it"
   }
 }
